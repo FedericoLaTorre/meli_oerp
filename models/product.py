@@ -1039,6 +1039,10 @@ class product_product(models.Model):
 
         b_search_nonfree_ship = False
         if ('shipping' in rjson):
+
+            if "logistic_type" in rjson["shipping"]:
+                product.meli_shipping_logistic_type = rjson["shipping"]["logistic_type"]
+
             att_shipping = {
                 'name': 'Con envío',
                 'create_variant': default_no_create_variant
@@ -2890,6 +2894,8 @@ class product_product(models.Model):
     meli_catalog_product_id = fields.Char(string='Catalog Product Id', size=256)
     meli_catalog_item_relations = fields.Char(string='Catalog Item Relations', size=256)
     meli_catalog_automatic_relist = fields.Boolean(string='Catalog Auto Relist', size=256)
+
+    meli_shipping_logistic_type = fields.Char(string="Logistic Type",index=True)
 
     _defaults = {
         'meli_imagen_logo': 'None',
