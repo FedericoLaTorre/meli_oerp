@@ -24,7 +24,7 @@
                 <label for="meli_pub" string="ML Pub"/><br/>
                 <field name="meli_pub"/>
                 <br/>
-                <label for="meli_published" string="ML Published"/><br/>-->
+                <label for="meli_published" string="ML Published"/><br/>
                 <field name="meli_published" />
               </xpath>
           </field>

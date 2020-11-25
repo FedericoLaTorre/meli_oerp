@@ -132,11 +132,6 @@
                       <group>
                         <field name="pdfimage_file" filename="pdfimage_filename"/>
                         <field name="pdfimage_filename"/>
-                        <field name="pdf_link" widget="url"/>
-                      </group>
-		      <group>
-                        <field name="pdfimage_file" filename="pdfimage_filename"/>
-                        <field name="pdfimage_filename"/>
                       </group>
                     </group>
                   </sheet>
