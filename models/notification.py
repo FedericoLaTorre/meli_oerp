@@ -156,7 +156,7 @@ class MercadolibreNotification(models.Model):
         return ""
 
     def _process_notification_question(self):
-        _logger.info("_process_notification_question")
+        #_logger.info("_process_notification_question")
 
         company = self.env.user.company_id
         meli_util_model = self.env['meli.util']

@@ -677,7 +677,6 @@ class product_product(models.Model):
             return {}
 
 
-
         for ix in range(0,len(pictures)):
 
             ml_imgid = pictures[ix]['id']
@@ -697,7 +696,7 @@ class product_product(models.Model):
 
                 duplicates = self.env["product.image"].search([('meli_force_pub','=',False),
                                                                 ('meli_imagen_id','=',ml_imgid),
-                                                                ('product_tmpl_id','=',product_template.id)])		
+                                                                ('product_tmpl_id','=',product_template.id)])
                 if (duplicates and len(duplicates)>1):
                     _logger.info("Removing template duplicates for "+str(ml_imgid)+" :"+str(len(duplicates)-1))
                     for ix in range(1,len(duplicates)):
@@ -713,7 +712,7 @@ class product_product(models.Model):
                             duplicates[ix].unlink()
                 except:
                     pass;
-	
+
         #_logger.info(ml_pics)
         #_logger.info(ml_bytes)
 
@@ -732,7 +731,7 @@ class product_product(models.Model):
             ml_images = self.env["product.image"].search([('meli_force_pub','=',False),
                                                         ('meli_imagen_id','!=',False),
                                                         ('product_variant_id','=',product.id)])
-            _logger.info(ml_images)
+            #_logger.info(ml_images)
             if (ml_images and len(ml_images)):
                 for ml_image in ml_images:
                     if not ml_image.meli_imagen_id in ml_pics and not str(ml_image.meli_imagen_bytes) in ml_bytes:
@@ -1094,8 +1093,6 @@ class product_product(models.Model):
             _logger.info( "Rare error" )
             return {}
 
-
-
         des = ''
         desplain = ''
         vid = ''
@@ -1441,7 +1438,7 @@ class product_product(models.Model):
 
         if (company.mercadolibre_update_existings_variants and 'attributes' in rjson):
             self._get_attributes(self, rjson['attributes'])
-	
+
         return {}
 
     def set_bom(self, has_sku=True):
@@ -2559,7 +2556,6 @@ class product_product(models.Model):
 
         #free shipping
         # https://api.mercadolibre.com/users/{user_id}/shipping_modes?category_id={category_id}&item_price=550
-
 
 
         if product.meli_id:
