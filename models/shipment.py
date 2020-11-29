@@ -250,7 +250,6 @@ class mercadolibre_shipment(models.Model):
 
 	_inherit = ['portal.mixin', 'mail.thread', 'mail.activity.mixin']
 
-	#response_meli = fields.Text(string='Respuesta ML')
 	name = fields.Char(string='Name',index=True)
 	site_id = fields.Char(string='Site id')
 	posting_id = fields.Many2one("mercadolibre.posting",string="Posting")
@@ -526,7 +525,7 @@ class mercadolibre_shipment(models.Model):
 					"sender_country": ship_json["sender_address"]["country"]["name"],
 					"sender_latitude": ship_json["sender_address"]["latitude"],
 					"sender_longitude": ship_json["sender_address"]["longitude"],
-                                        "response_meli": str(ship_json),
+                                      "response_meli": str(ship_json),
 
 
 					"logistic_type": ("logistic_type" in ship_json and ship_json["logistic_type"]) or ""

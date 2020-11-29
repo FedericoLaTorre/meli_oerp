@@ -843,9 +843,6 @@ class mercadolibre_orders(models.Model):
                         'product_uom': product_related_obj.uom_id.id,
                         'name': Item['item']['title'],
                     }
-                    # Se agrega el impuesto
-                    #if product_related_obj.taxes_id:
-                    #    saleorderline_item_fields['tax_id'] = (6,0,[product_related_obj.taxes_id.ids[0].id])
                     saleorderline_item_fields.update( self._set_product_unit_price( product_related_obj, Item ) )
 
                     saleorderline_item_ids = saleorderline_obj.search( [('meli_order_item_id','=',saleorderline_item_fields['meli_order_item_id']),
@@ -900,8 +897,7 @@ class mercadolibre_orders(models.Model):
                                                             ('order_id','=',order.id ) ] )
 
                 if not payment_ids:
-                    payment_ids = payments_obj.create( ( payment_fields ))
-	            #payment_ids = payments_obj.create( ( payment_fields ))
+	                payment_ids = payments_obj.create( ( payment_fields ))
                 else:
                     payment_ids.write( ( payment_fields ) )
 
