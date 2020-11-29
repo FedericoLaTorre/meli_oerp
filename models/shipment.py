@@ -430,7 +430,15 @@ class mercadolibre_shipment(models.Model):
 				#saleorderline_item_fields['tax_id'] = (6,0,[product_shipping_id.taxes_id.ids[0]])
                                     #raise ValidationError('estamos aca %s'%(saleorderline_item_fields))
 
+				#if 'tax_id' in saleorderline_item_fields:
+				#	del saleorderline_item_fields['tax_id']
+				if 'company_id' in saleorderline_item_fields:
+					del saleorderline_item_fields['company_id']
 
+				#_logger.debug('[DEBUG] %s %s'%(saleorderline_item_fields, product_shipping_id.taxes_id.ids[0]))
+				saleorderline_item_ids.write( ( saleorderline_item_fields ) )
+				#_logger.debug('[DEBUG] Post-write')
+				saleorderline_item_ids.write({'tax_id': [(6,0,[product_shipping_id.taxes_id.ids[0]])]})
 
 	#Return shipment object based on mercadolibre.orders "order"
 	def fetch( self, order ):
