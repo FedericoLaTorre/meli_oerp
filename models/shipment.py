@@ -107,9 +107,10 @@ class mercadolibre_shipment_print(models.TransientModel):
 						images = convert_from_bytes(data, dpi=300,fmt='jpg')
 						if (1==1 and len(images)>1):
 							for image in images:
-								image.save("/tmp/%s-page%d.jpg" % ("Shipment_"+shipment.shipping_id,images.index(image)), "JPEG")
-								if (images.index(image)==1):
-									imgdata = urlopen("file:///tmp/Shipment_"+shipment.shipping_id+"-page1.jpg").read()
+								image_filename = "/tmp/%s-page%d.jpg" % ("Shipment_"+shipment.shipping_id, images.index(image))
+								image.save(image_filename, "JPEG")
+								if (images.index(image)==0):
+									imgdata = urlopen("file://"+image_filename).read()
 									shipment.pdfimage_file = base64.encodestring(imgdata)
 									shipment.pdfimage_filename = "Shipment_"+shipment.shipping_id+".jpg"
 					except Exception as e:
@@ -188,9 +189,10 @@ class mercadolibre_shipment_print(models.TransientModel):
 						images = convert_from_bytes(data, dpi=300,fmt='jpg')
 						if (1==1 and len(images)>1):
 							for image in images:
-								image.save("/tmp/%s-page%d.jpg" % ("Shipment_"+shipment.shipping_id,images.index(image)), "JPEG")
-								if (images.index(image)==1):
-									imgdata = urlopen("file:///tmp/Shipment_"+shipment.shipping_id+"-page1.jpg").read()
+								image_filename = "/tmp/%s-page%d.jpg" % ("Shipment_"+shipment.shipping_id, images.index(image))
+								image.save(image_filename, "JPEG")
+								if (images.index(image)==0):
+									imgdata = urlopen("file://"+image_filename).read()
 									shipment.pdfimage_file = base64.encodestring(imgdata)
 									shipment.pdfimage_filename = "Shipment_"+shipment.shipping_id+".jpg"
 					except Exception as e:
@@ -594,9 +596,10 @@ class mercadolibre_shipment(models.Model):
 								data = base64.b64decode( shipment.pdf_file )
 								images = convert_from_bytes(data, dpi=300,fmt='jpg')
 								for image in images:
-									image.save("/tmp/%s-page%d.jpg" % ("Shipment_"+shipment.shipping_id,images.index(image)), "JPEG")
-									if (images.index(image)==1):
-										imgdata = urlopen("file:///tmp/Shipment_"+shipment.shipping_id+"-page1.jpg").read()
+									image_filename = "/tmp/%s-page%d.jpg" % ("Shipment_"+shipment.shipping_id, images.index(image))
+									image.save(image_filename, "JPEG")
+									if (images.index(image)==0):
+										imgdata = urlopen("file://"+image_filename).read()
 										shipment.pdfimage_file = base64.encodestring(imgdata)
 										shipment.pdfimage_filename = "Shipment_"+shipment.shipping_id+".jpg"
 								#if (len(images)):
@@ -636,7 +639,7 @@ class mercadolibre_shipment(models.Model):
 								#'meli_order_id': '%i' % (order_json["id"]),
 								'meli_order_id': packed_order_ids,
 								'meli_orders': [(6, 0, all_orders_ids)],
-								'meli_shipping_id': shipment.id,
+								'meli_shipping_id': shipment.shipping_id,
 								'meli_shipping': shipment,
 								'meli_shipment': shipment.id,
 								'meli_status': all_orders[0]["status"],
@@ -758,11 +761,11 @@ class AccountInvoice(models.Model):
 		if (self.origin):
 			order = self.env["sale.order"].search([('name','=',self.origin)])
 			if (order.id):
-				_logger.info("Order found:"+str(order.name))
+				_logger.info("Order found in _get_shipment:"+str(order.name))
 				#if (order.meli_order_id)
-				if (order.meli_shipping_id):
-					shipment = self.env["mercadolibre.shipment"].search([('shipping_id','=',order.meli_shipping_id)])
-					ret["shipping_id"] = order.meli_shipping_id
+				if (order.meli_shipment):
+					shipment = order.meli_shipment
+					ret["shipping_id"] = order.meli_shipment.shipping_id
 					ret["pdfimage_filename"] = shipment.pdfimage_filename
 					ret["pdfimage_file"] = shipment.pdfimage_file
 					ret["receiver_address_name"] = shipment.receiver_address_name
@@ -781,5 +784,18 @@ class AccountInvoice(models.Model):
 			else:
 				_logger.info("No order found for:"+str(self.origin))
 		return ret
+		
+	@api.model
+	def _get_meli_shipment(self):
+		ret = False
+		if (self.origin):
+			order = self.env["sale.order"].search([('name','=',self.origin)])
+			if (order.id):
+				_logger.info("Order found in _get_shipment:"+str(order.name))
+				#if (order.meli_order_id)
+				if (order.meli_shipment):
+					return order.meli_shipment
 
+		return ret
+		
 AccountInvoice()

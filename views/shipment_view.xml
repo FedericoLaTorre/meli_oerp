@@ -286,6 +286,7 @@
                         name="meli_oerp.report_shipment"
                         menu="True"
                         print_report_name="'Reporte de etiquetas'"
+                        paperformat="meli_oerp.paperformat_invoice_shipment"
                     />
 
             <report
@@ -302,14 +303,26 @@
 
             <report
                         id="report_invoice_shipment_view"
-                        string="Shipment Report"
+                        string="Invoice Shipment Report (with labels)"
                         model="account.invoice"
                         report_type="qweb-pdf"
                         file="meli_oerp.report_invoice_shipment"
                         name="meli_oerp.report_invoice_shipment"
                         menu="True"
                         print_report_name="'Reporte de facturas con etiquetas'"
-                        paperformat="meli_oerp.paperformat_invoice_shipment"
+                        
                     />
+                    
+          <report
+                      id="report_invoice_shipment_from_order_view"
+                      string="Invoice Shipment Report from Order (with labels)"
+                      model="sale.order"
+                      report_type="qweb-pdf"
+                      file="meli_oerp.report_invoice_shipment_from_order"
+                      name="meli_oerp.report_invoice_shipment_from_order"
+                      menu="True"
+                      print_report_name="'Reporte de facturas con etiquetas'"
+                      
+                  />
     </data>
 </odoo>
