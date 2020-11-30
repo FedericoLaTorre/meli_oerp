@@ -425,20 +425,16 @@ class mercadolibre_shipment(models.Model):
 				saleorderline_item_ids = saleorderline_obj.create( ( saleorderline_item_fields ))
 				#saleorderline_item_ids.tax_id = None
 			else:
-				if 'tax_id' in saleorderline_item_fields:
-					del saleorderline_item_fields['tax_id']
-				#saleorderline_item_fields['tax_id'] = (6,0,[product_shipping_id.taxes_id.ids[0]])
-                                    #raise ValidationError('estamos aca %s'%(saleorderline_item_fields))
+				if (shipment.shipping_cost>0):
+					saleorderline_item_ids.write( ( saleorderline_item_fields ) )
+					#saleorderline_item_ids.tax_id = None
+				else:
+					try:
+						saleorderline_item_ids.unlink()
+					except:
+						_logger.info("Could not unlink.")
 
-				#if 'tax_id' in saleorderline_item_fields:
-				#	del saleorderline_item_fields['tax_id']
-				if 'company_id' in saleorderline_item_fields:
-					del saleorderline_item_fields['company_id']
 
-				#_logger.debug('[DEBUG] %s %s'%(saleorderline_item_fields, product_shipping_id.taxes_id.ids[0]))
-				saleorderline_item_ids.write( ( saleorderline_item_fields ) )
-				#_logger.debug('[DEBUG] Post-write')
-				saleorderline_item_ids.write({'tax_id': [(6,0,[product_shipping_id.taxes_id.ids[0]])]})
 
 	#Return shipment object based on mercadolibre.orders "order"
 	def fetch( self, order ):
