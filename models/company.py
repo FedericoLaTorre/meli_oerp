@@ -148,8 +148,6 @@ class res_company(models.Model):
 
             if ACCESS_TOKEN=='' or ACCESS_TOKEN==False:
                 ML_state = True
-                
-        _logger.info('ML_state')
 
         except requests.exceptions.ConnectionError as e:
             #raise osv.except_osv( _('MELI WARNING'), _('NO INTERNET CONNECTION TO API.MERCADOLIBRE.COM: complete the Cliend Id, and Secret Key and try again'))
