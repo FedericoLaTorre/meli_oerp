@@ -685,7 +685,7 @@ class mercadolibre_orders(models.Model):
         }
 
         if ('account.payment.term' in self.env):
-            inmediate = self.env['account.payment.term'].search([])
+            inmediate = self.env['account.payment.term'].search([])[0]
             meli_order_fields["payment_term_id"] = inmediate.id
 
         if (order_json["shipping"]):
