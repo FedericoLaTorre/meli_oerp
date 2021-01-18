@@ -62,22 +62,13 @@ class mercadolibre_shipment_print(models.TransientModel):
 		context = context or self.env.context
 		company = self.env.user.company_id
 		shipment_ids = context['active_ids']
-		#product_obj = self.env['product.template']
 		shipment_obj = self.env['mercadolibre.shipment']
 		warningobj = self.env['warning']
 
-		CLIENT_ID = company.mercadolibre_client_id
-		CLIENT_SECRET = company.mercadolibre_secret_key
-		ACCESS_TOKEN = company.mercadolibre_access_token
-		REFRESH_TOKEN = company.mercadolibre_refresh_token
+		meli = self.env['meli.util'].get_new_instance(company)
+		if meli.need_login():
+			return meli.redirect_login()
 
-		#
-		meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN )
-
-		#user_obj = self.pool.get('res.users').browse(cr, uid, uid)
-		#user_obj.company_id.meli_login()
-		#company = user_obj.company_id
-		#warningobj = self.env['warning']
 		_logger.info("shipment_print")
 		_logger.info(shipment_ids)
 
@@ -141,12 +132,9 @@ class mercadolibre_shipment_print(models.TransientModel):
 		shipment_obj = self.env['mercadolibre.shipment']
 		warningobj = self.env['warning']
 
-		CLIENT_ID = company.mercadolibre_client_id
-		CLIENT_SECRET = company.mercadolibre_secret_key
-		ACCESS_TOKEN = company.mercadolibre_access_token
-		REFRESH_TOKEN = company.mercadolibre_refresh_token
-
-		meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN )
+		meli = self.env['meli.util'].get_new_instance(company)
+		if meli.need_login():
+			return meli.redirect_login()
 
 		full_ids = ""
 		comma = ""
@@ -324,6 +312,9 @@ class mercadolibre_shipment(models.Model):
 	pdfimage_file = fields.Binary(string='Pdf Image File',attachment=True)
 	pdfimage_filename = fields.Char(string='Pdf Image Filename')
 
+	company_id = fields.Many2one("res.company",string="Company")
+	seller_id = fields.Many2one("res.users",string="Seller")
+
 	pack_order = fields.Boolean(string="Carrito de compra")
 
 	_sql_constraints = [
@@ -349,7 +340,7 @@ class mercadolibre_shipment(models.Model):
 			sorder.meli_shipping_cost = shipment.shipping_cost
 			sorder.meli_shipping_list_cost = shipment.shipping_list_cost
 			sorder.meli_shipment_logistic_type = shipment.logistic_type
-			
+
 			order.shipping_cost = shipment.shipping_cost
 			order.shipping_list_cost = shipment.shipping_list_cost
 			order.shipment_logistic_type = shipment.logistic_type
@@ -362,7 +353,7 @@ class mercadolibre_shipment(models.Model):
 				#sorder.partner_id.state = ships.receiver_state
 
 			ship_name = shipment.tracking_method or (shipment.mode=="custom" and "Personalizado")
-			
+
 			if not ship_name or len(ship_name)==0:
 				continue;
 
@@ -379,7 +370,9 @@ class mercadolibre_shipment(models.Model):
 					"default_code": ship_name,
 					"type": "service",
 					#"taxes_id": None
-				}				
+					#"categ_id": 279,
+					#"company_id": company.id
+				}
 				_logger.info(ship_prod)
 				product_shipping_tpl = product_tpl.create((ship_prod))
 				if (product_shipping_tpl):
@@ -389,9 +382,9 @@ class mercadolibre_shipment(models.Model):
 			if (not product_shipping_id):
 				_logger.info('Failed to create shipping product service')
 				continue
-				
+
 			ship_carrier = {
-				"name": ship_name,					
+				"name": ship_name,
 			}
 			ship_carrier["product_id"] = product_shipping_id.id
 			ship_carrier_id = self.env["delivery.carrier"].search([ ('name','=',ship_carrier['name']) ])
@@ -399,14 +392,14 @@ class mercadolibre_shipment(models.Model):
 				ship_carrier_id = self.env["delivery.carrier"].create(ship_carrier)
 			if (len(ship_carrier_id)>1):
 				ship_carrier_id = ship_carrier_id[0]
-				
+
 			stock_pickings = self.env["stock.picking"].search([('sale_id','=',sorder.id),('name','like','OUT')])
 			#carrier_id = self.env["delivery.carrier"].search([('name','=',)])
 			for st_pick in stock_pickings:
 				#if ( 1==2 and ship_carrier_id ):
 				#	st_pick.carrier_id = ship_carrier_id
 				st_pick.carrier_tracking_ref = shipment.tracking_number
-				
+
 			if (shipment.tracking_method == "MEL Distribution"):
 				_logger.info('MEL Distribution, not adding to order')
 				#continue
@@ -421,8 +414,8 @@ class mercadolibre_shipment(models.Model):
 				delivery_price = shipment.shipping_cost
 				#display_price = vals['carrier_price']
 				#_logger.info(vals)
-				set_delivery_line(sorder, delivery_price, delivery_message )				
-			
+				set_delivery_line(sorder, delivery_price, delivery_message )
+
 			saleorderline_item_fields = {
 				'company_id': company.id,
 				'order_id': sorder.id,
@@ -436,7 +429,7 @@ class mercadolibre_shipment(models.Model):
 			}
 			saleorderline_item_ids = saleorderline_obj.search( [('meli_order_item_id','=',saleorderline_item_fields['meli_order_item_id']),
 																('order_id','=',sorder.id)] )
-			
+
 			if not saleorderline_item_ids and (shipment.shipping_cost>0):
 				#saleorderline_item_ids = saleorderline_obj.create( ( saleorderline_item_fields ))
 				pass;
@@ -466,13 +459,9 @@ class mercadolibre_shipment(models.Model):
 		orders_obj = self.env['mercadolibre.orders']
 		shipment_obj = self.env['mercadolibre.shipment']
 
-		CLIENT_ID = company.mercadolibre_client_id
-		CLIENT_SECRET = company.mercadolibre_secret_key
-		ACCESS_TOKEN = company.mercadolibre_access_token
-		REFRESH_TOKEN = company.mercadolibre_refresh_token
-
-		#
-		meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN )
+		meli = self.env['meli.util'].get_new_instance(company)
+		if meli.need_login():
+			return meli.redirect_login()
 
 		ship_id = False
 		shipment = None
@@ -492,8 +481,13 @@ class mercadolibre_shipment(models.Model):
 				_logger.error( ship_json["message"] )
 			else:
 				_logger.info("Saving shipment fields")
+				seller_id = None
+				if company.mercadolibre_seller_user:
+					seller_id = company.mercadolibre_seller_user.id
 				ship_fields = {
 					"name": "MSO ["+str(ship_id)+"] "+str("")+str(ship_json["status"])+"/"+str(ship_json["substatus"])+str(""),
+					'company_id': company.id,
+					'seller_id': seller_id,
 					"order": order.id,
 					"shipping_id": ship_json["id"],
 					"site_id": ship_json["site_id"],
@@ -514,37 +508,41 @@ class mercadolibre_shipment(models.Model):
 					"comments": ship_json["comments"] or '',
 					"date_first_printed": ml_datetime(ship_json["date_first_printed"]),
 					"receiver_id": ship_json["receiver_id"],
-					"receiver_address_id": ship_json["receiver_address"]["id"],
-					"receiver_address_phone": ship_json["receiver_address"]["receiver_phone"],
-					"receiver_address_name": ship_json["receiver_address"]["receiver_name"],
-					"receiver_address_line": ship_json["receiver_address"]["address_line"],
-					"receiver_address_comment": ship_json["receiver_address"]["comment"],
-					"receiver_street_name": ship_json["receiver_address"]["street_name"],
-					"receiver_street_number": ship_json["receiver_address"]["street_number"],
-					"receiver_city": ship_json["receiver_address"]["city"]["name"],
-					"receiver_city_code": ship_json["receiver_address"]["city"]["id"],
-					"receiver_state": ship_json["receiver_address"]["state"]["name"],
-					"receiver_state_code": ship_json["receiver_address"]["state"]["id"],
-					"receiver_country": ship_json["receiver_address"]["country"]["name"],
-					"receiver_country_code": ship_json["receiver_address"]["country"]["id"],
-					"receiver_latitude": ship_json["receiver_address"]["latitude"],
-					"receiver_longitude": ship_json["receiver_address"]["longitude"],
-
 					"sender_id": ship_json["sender_id"],
-					"sender_address_id": ship_json["sender_address"]["id"],
-					"sender_address_line": ship_json["sender_address"]["address_line"],
-					"sender_address_comment": ship_json["sender_address"]["comment"],
-					"sender_street_name": ship_json["sender_address"]["street_name"],
-					"sender_street_number": ship_json["sender_address"]["street_number"],
-					"sender_city": ship_json["sender_address"]["city"]["name"],
-					"sender_state": ship_json["sender_address"]["state"]["name"],
-					"sender_country": ship_json["sender_address"]["country"]["name"],
-					"sender_latitude": ship_json["sender_address"]["latitude"],
-					"sender_longitude": ship_json["sender_address"]["longitude"],
-
-
 					"logistic_type": ("logistic_type" in ship_json and ship_json["logistic_type"]) or ""
 				}
+				if "receiver_address" in ship_json and ship_json["receiver_address"]:
+					ship_fields.update({
+						"receiver_address_id": ship_json["receiver_address"]["id"],
+						"receiver_address_phone": ship_json["receiver_address"]["receiver_phone"],
+						"receiver_address_name": ship_json["receiver_address"]["receiver_name"],
+						"receiver_address_line": ship_json["receiver_address"]["address_line"],
+						"receiver_address_comment": ship_json["receiver_address"]["comment"],
+						"receiver_street_name": ship_json["receiver_address"]["street_name"],
+						"receiver_street_number": ship_json["receiver_address"]["street_number"],
+						"receiver_city": ship_json["receiver_address"]["city"]["name"],
+						"receiver_city_code": ship_json["receiver_address"]["city"]["id"],
+						"receiver_state": ship_json["receiver_address"]["state"]["name"],
+						"receiver_state_code": ship_json["receiver_address"]["state"]["id"],
+						"receiver_country": ship_json["receiver_address"]["country"]["name"],
+						"receiver_country_code": ship_json["receiver_address"]["country"]["id"],
+						"receiver_latitude": ship_json["receiver_address"]["latitude"],
+						"receiver_longitude": ship_json["receiver_address"]["longitude"]
+					})
+
+				if "sender_address" in ship_json and ship_json["sender_address"]:
+					ship_fields.update({
+						"sender_address_id": ship_json["sender_address"]["id"],
+						"sender_address_line": ship_json["sender_address"]["address_line"],
+						"sender_address_comment": ship_json["sender_address"]["comment"],
+						"sender_street_name": ship_json["sender_address"]["street_name"],
+						"sender_street_number": ship_json["sender_address"]["street_number"],
+						"sender_city": ship_json["sender_address"]["city"]["name"],
+						"sender_state": ship_json["sender_address"]["state"]["name"],
+						"sender_country": ship_json["sender_address"]["country"]["name"],
+						"sender_latitude": ship_json["sender_address"]["latitude"],
+						"sender_longitude": ship_json["sender_address"]["longitude"],
+					});
 
 				response2 = meli.get("/shipments/"+ str(ship_id)+"/items",  {'access_token':meli.access_token})
 				if (response2):
@@ -578,7 +576,7 @@ class mercadolibre_shipment(models.Model):
 									coma = ","
 						full_orders = ( len(items_json) == len(all_orders) )
 						_logger.info(items_json)
-						_logger.info(full_orders)
+						_logger.info("full_orders:"+str(full_orders))
 						if (full_orders):
 							#We can create order with all items now
 							ship_fields["orders"] = [(6, 0, all_orders_ids)]
@@ -594,124 +592,132 @@ class mercadolibre_shipment(models.Model):
 					_logger.info("Updating shipment: " + str(ship_id))
 					shipment.write((ship_fields))
 
-					try:
-						_logger.info("ships.pdf_filename:")
-						_logger.info(shipment.pdf_filename)
-						if (1==1 and shipment.pdf_filename):
-							_logger.info("We have a pdf file")
-							if (shipment.pdfimage_filename==False):
-								_logger.info("Try create a pdf image file")
-								data = base64.b64decode( shipment.pdf_file )
-								images = convert_from_bytes(data, dpi=300,fmt='jpg')
-								for image in images:
-									image_filename = "/tmp/%s-page%d.jpg" % ("Shipment_"+shipment.shipping_id, images.index(image))
-									image.save(image_filename, "JPEG")
-									if (images.index(image)==0):
-										imgdata = urlopen("file://"+image_filename).read()
-										shipment.pdfimage_file = base64.encodestring(imgdata)
-										shipment.pdfimage_filename = "Shipment_"+shipment.shipping_id+".jpg"
-								#if (len(images)):
-								#	_logger.info(images)
-									#for image in images:
-									#base64.b64decode( pimage.image )
-								#	image = images[1]
-								#	ships.pdfimage_file = base64.encodestring(image.tobytes())
-								#	ships.pdfimage_filename = "Shipment_"+ships.shipping_id+".jpg"
-					except Exception as e:
-						_logger.info("Error converting pdf to jpg: try installing pdf2image and poppler-utils, like this:")
-						_logger.info("sudo apt install poppler-utils && sudo pip install pdf2image")
-						_logger.info(e, exc_info=True)
-						pass;
+				try:
+					_logger.info("ships.pdf_filename:")
+					_logger.info(shipment.pdf_filename)
+					if (1==1 and shipment.pdf_filename):
+						_logger.info("We have a pdf file")
+						if (shipment.pdfimage_filename==False):
+							_logger.info("Try create a pdf image file")
+							data = base64.b64decode( shipment.pdf_file )
+							images = convert_from_bytes(data, dpi=300,fmt='jpg')
+							for image in images:
+								image_filename = "/tmp/%s-page%d.jpg" % ("Shipment_"+shipment.shipping_id, images.index(image))
+								image.save(image_filename, "JPEG")
+								if (images.index(image)==0):
+									imgdata = urlopen("file://"+image_filename).read()
+									shipment.pdfimage_file = base64.encodestring(imgdata)
+									shipment.pdfimage_filename = "Shipment_"+shipment.shipping_id+".jpg"
+							#if (len(images)):
+							#	_logger.info(images)
+								#for image in images:
+								#base64.b64decode( pimage.image )
+							#	image = images[1]
+							#	ships.pdfimage_file = base64.encodestring(image.tobytes())
+							#	ships.pdfimage_filename = "Shipment_"+ships.shipping_id+".jpg"
+				except Exception as e:
+					_logger.info("Error converting pdf to jpg: try installing pdf2image and poppler-utils, like this:")
+					_logger.info("sudo apt install poppler-utils && sudo pip install pdf2image")
+					_logger.info(e, exc_info=True)
+					pass;
 
-					if (ship_fields["pack_order"]==False):
-						sorder = self.env["sale.order"].search( [ ('meli_order_id','=',ship_fields["order_id"]) ] )
-						if len(sorder):
-							shipment.sale_order = sorder[0]
-							sorder.meli_shipment = shipment
+				#associate order if it was non pack order created bir orders.py
+				if (ship_fields["pack_order"]==False):
+					sorder = self.env["sale.order"].search( [ ('meli_order_id','=',ship_fields["order_id"]) ] )
+					if len(sorder):
+						shipment.sale_order = sorder[0]
+						sorder.meli_shipment = shipment
 
-					if (full_orders and ship_fields["pack_order"]):
-						plistid = None
-						if company.mercadolibre_pricelist:
-							plistid = company.mercadolibre_pricelist
+				#if its a pack order, create it, oif full_orders were fetched (we can force this now)
+				if (full_orders and ship_fields["pack_order"]):
+					plistid = None
+					if company.mercadolibre_pricelist:
+						plistid = company.mercadolibre_pricelist
+					else:
+						plistids = pricelist_obj.search([])[0]
+						if plistids:
+							plistid = plistids
+
+					#buyer_ids = buyers_obj.search([  ('buyer_id','=',buyer_fields['buyer_id'] ) ] )
+					partner_id = respartner_obj.search([  ('meli_buyer_id','=',ship_fields['receiver_id'] ) ] )
+					if (partner_id.id):
+						meli_order_fields = {
+							#TODO: "add parameter for pack_id":
+							#'name': "ML %i" % ( all_orders[0]["pack_id"] ),
+							'name': "ML %s" % ( str(all_orders[0]["order_id"]) ),
+							'partner_id': partner_id.id,
+							'pricelist_id': plistid.id,
+							#'meli_order_id': '%i' % (order_json["id"]),
+							'meli_order_id': packed_order_ids,
+							'meli_orders': [(6, 0, all_orders_ids)],
+							'meli_shipping_id': shipment.shipping_id,
+							'meli_shipping': shipment,
+							'meli_shipment': shipment.id,
+							'meli_status': all_orders[0]["status"],
+							'meli_status_detail': all_orders[0]["status_detail"] or '' ,
+							'meli_total_amount': shipment.order_cost,
+							'meli_shipping_cost': shipment.shipping_cost,
+							'meli_shipping_list_cost': shipment.shipping_list_cost,
+							'meli_paid_amount': shipment.order_cost,
+							'meli_fee_amount': 0.0,
+							'meli_currency_id': all_orders[0]["currency_id"],
+							'meli_date_created': ml_datetime(all_orders[0]["date_created"]),
+							'meli_date_closed': ml_datetime(all_orders[0]["date_closed"]),
+						}
+						if ("pack_id" in all_orders[0] and all_orders[0]["pack_id"]):
+							meli_order_fields['name'] = "ML %s" % ( str(all_orders[0]["pack_id"]) )
+							#meli_order_fields['pack_id'] = all_orders[0]["pack_id"]                    
+						sorder_pack = self.env["sale.order"].search( [ ('meli_order_id','=',meli_order_fields["meli_order_id"]) ] )
+
+						if (company.mercadolibre_seller_user):
+							meli_order_fields["user_id"] = company.mercadolibre_seller_user.id
+
+						if (len(sorder_pack)):
+							sorder_pack = sorder_pack[0]
+							sorder_pack.write(meli_order_fields)
 						else:
-							plistids = pricelist_obj.search([])[0]
-							if plistids:
-								plistid = plistids
+							sorder_pack = self.env["sale.order"].create(meli_order_fields)
 
-						#buyer_ids = buyers_obj.search([  ('buyer_id','=',buyer_fields['buyer_id'] ) ] )
-						partner_id = respartner_obj.search([  ('meli_buyer_id','=',ship_fields['receiver_id'] ) ] )
-						if (partner_id.id):
-							meli_order_fields = {
-								'partner_id': partner_id.id,
-								'pricelist_id': plistid.id,
-								#'meli_order_id': '%i' % (order_json["id"]),
-								'meli_order_id': packed_order_ids,
-								'meli_orders': [(6, 0, all_orders_ids)],
-								'meli_shipping_id': shipment.shipping_id,
-								'meli_shipping': shipment,
-								'meli_shipment': shipment.id,
-								'meli_status': all_orders[0]["status"],
-								'meli_status_detail': all_orders[0]["status_detail"] or '' ,
-								'meli_total_amount': shipment.order_cost,
-								'meli_shipping_cost': shipment.shipping_cost,
-								'meli_shipping_list_cost': shipment.shipping_list_cost,
-								'meli_paid_amount': shipment.order_cost,
-								'meli_fee_amount': 0.0,
-								'meli_currency_id': all_orders[0]["currency_id"],
-								'meli_date_created': ml_datetime(all_orders[0]["date_created"]),
-								'meli_date_closed': ml_datetime(all_orders[0]["date_closed"]),
-							}
-							sorder_pack = self.env["sale.order"].search( [ ('meli_order_id','=',meli_order_fields["meli_order_id"]) ] )
+						if (sorder_pack.id):
+							shipment.sale_order = sorder_pack
 
-							if (company.mercadolibre_seller_user):
-								meli_order_fields["user_id"] = company.mercadolibre_seller_user.id
+							order.sale_order = sorder_pack
+							order.shipping_cost = shipment.shipping_cost
+							order.shipping_list_cost = shipment.shipping_list_cost
 
-							if (len(sorder_pack)):
-								sorder_pack = sorder_pack[0]
-								sorder_pack.write(meli_order_fields)
-							else:
-								sorder_pack = self.env["sale.order"].create(meli_order_fields)
+							#creating and updating all items related to ml.orders
+							sorder_pack.meli_fee_amount = 0.0
+							for mOrder in all_orders:
+								#Each Order one product with one price and one quantity
+								product_related_obj = mOrder.order_items[0].product_id or mOrder.order_items[0].posting_id.product_id
+								if not (product_related_obj):
+									_logger.error("Error adding order line: product not found in database: " + str(mOrder.order_items[0]["order_item_title"]) )
+									continue;
+								unit_price = mOrder.order_items[0]["unit_price"]
+								saleorderline_item_fields = {
+									'company_id': company.id,
+									'order_id': shipment.sale_order.id,
+									'meli_order_item_id': mOrder.order_items[0]["order_item_id"],
+									'meli_order_item_variation_id': mOrder.order_items[0]["order_item_variation_id"],
+									'price_unit': float(unit_price),
+									'product_id': product_related_obj.id,
+									'product_uom_qty': mOrder.order_items[0]["quantity"],
+									'product_uom': product_related_obj.uom_id.id,
+									'name': product_related_obj.display_name or mOrder.order_items[0]["order_item_title"],
+								}
+								if (mOrder.fee_amount):
+									sorder_pack.meli_fee_amount = sorder_pack.meli_fee_amount + mOrder.fee_amount
 
-							if (sorder_pack.id):
-								shipment.sale_order = sorder_pack
+								saleorderline_item_fields.update( order._set_product_unit_price( product_related_obj, mOrder.order_items[0] ) )
 
-								order.sale_order = sorder_pack
-								order.shipping_cost = shipment.shipping_cost
-								order.shipping_list_cost = shipment.shipping_list_cost
+								saleorderline_item_ids = saleorderline_obj.search( [('meli_order_item_id','=',saleorderline_item_fields['meli_order_item_id']),
+																					('meli_order_item_variation_id','=',saleorderline_item_fields['meli_order_item_variation_id']),
+																					('order_id','=',shipment.sale_order.id)] )
 
-								#creating and updating all items related to ml.orders
-								sorder_pack.meli_fee_amount = 0.0
-								for mOrder in all_orders:
-									#Each Order one product with one price and one quantity
-									product_related_obj = mOrder.order_items[0].product_id or mOrder.order_items[0].posting_id.product_id
-									if not (product_related_obj):
-										_logger.error("Error adding order line: product not found in database: " + str(mOrder.order_items[0]["order_item_title"]) )
-										continue;
-									unit_price = mOrder.order_items[0]["unit_price"]
-									saleorderline_item_fields = {
-										'company_id': company.id,
-										'order_id': shipment.sale_order.id,
-										'meli_order_item_id': mOrder.order_items[0]["order_item_id"],
-										'meli_order_item_variation_id': mOrder.order_items[0]["order_item_variation_id"],
-										'price_unit': float(unit_price),
-										'product_id': product_related_obj.id,
-										'product_uom_qty': mOrder.order_items[0]["quantity"],
-										'product_uom': product_related_obj.uom_id.id,
-										'name': mOrder.order_items[0]["order_item_title"],
-									}
-									if (mOrder.fee_amount):
-										sorder_pack.meli_fee_amount = sorder_pack.meli_fee_amount + mOrder.fee_amount
-
-									saleorderline_item_fields.update( order._set_product_unit_price( product_related_obj, mOrder.order_items[0] ) )
-
-									saleorderline_item_ids = saleorderline_obj.search( [('meli_order_item_id','=',saleorderline_item_fields['meli_order_item_id']),
-																						('meli_order_item_variation_id','=',saleorderline_item_fields['meli_order_item_variation_id']),
-																						('order_id','=',shipment.sale_order.id)] )
-
-									if not saleorderline_item_ids:
-										saleorderline_item_ids = saleorderline_obj.create( ( saleorderline_item_fields ))
-									else:
-										saleorderline_item_ids.write( ( saleorderline_item_fields ) )
+								if not saleorderline_item_ids:
+									saleorderline_item_ids = saleorderline_obj.create( ( saleorderline_item_fields ))
+								else:
+									saleorderline_item_ids.write( ( saleorderline_item_fields ) )
 
 
 		if (shipment):
@@ -732,13 +738,9 @@ class mercadolibre_shipment(models.Model):
 		orders_obj = self.env['mercadolibre.orders']
 		shipment_obj = self.env['mercadolibre.shipment']
 
-		CLIENT_ID = company.mercadolibre_client_id
-		CLIENT_SECRET = company.mercadolibre_secret_key
-		ACCESS_TOKEN = company.mercadolibre_access_token
-		REFRESH_TOKEN = company.mercadolibre_refresh_token
-
-		#
-		meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN )
+		meli = self.env['meli.util'].get_new_instance(company)
+		if meli.need_login():
+			return meli.redirect_login()
 
 		#orders_query = "/orders/search?seller="+company.mercadolibre_seller_id+"&sort=date_desc"
 
@@ -792,7 +794,7 @@ class AccountInvoice(models.Model):
 			else:
 				_logger.info("No order found for:"+str(self.origin))
 		return ret
-		
+
 	@api.model
 	def _get_meli_shipment(self):
 		ret = False
@@ -805,5 +807,5 @@ class AccountInvoice(models.Model):
 					return order.meli_shipment
 
 		return ret
-		
+
 AccountInvoice()

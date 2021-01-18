@@ -19,6 +19,9 @@ acc_inv_model  = "account.invoice"
 default_no_create_variant = False
 default_create_variant = True
 
+#'unique(product_tmpl_id,meli_imagen_id)'
+unique_meli_imagen_id_fields = 'unique(product_tmpl_id,meli_imagen_id)'
+
 #variant mage ids
 def variant_image_ids(self):
     return self.product_image_ids
@@ -97,9 +100,9 @@ def get_inventory_fields( product, warehouse ):
 
 def set_delivery_line( sorder, delivery_price, delivery_message ):
     #check version
-    sorder._create_delivery_line(sorder.carrier_id, delivery_price)
+    oline = sorder._create_delivery_line(sorder.carrier_id, delivery_price)
     sorder.write({
     	#'recompute_delivery_price': False,
     	'delivery_message': delivery_message,
     })
-		
+    return oline
