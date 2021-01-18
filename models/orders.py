@@ -649,6 +649,114 @@ class mercadolibre_orders(models.Model):
                 order_fields['shipping_id'] = order_json["shipping"]["id"]
                 meli_order_fields['meli_shipping_id'] = order_json["shipping"]["id"]
 
+    # @api.multi
+    def create_new_sale_order(self):
+        '''
+        Desde una ORDEN_ML del tree creo un NUEVO presupuesto sin importar si existe ya un presupuesto de esta ordenML
+        '''
+
+        for rec in self:
+            if not rec.buyer:
+                continue
+            # if rec.sale_order_id:   # NO IMPORTA SI EXISTE YA LA ORDEN
+            #     continue
+            partner = self.env['res.partner'].search([('meli_buyer_id', '=', rec.buyer.buyer_id)], limit=1)
+            if not partner:
+                # Parche: Entonces lo busco por el documento asosciado al cliente
+                partner = self.env['res.partner'].search([('main_id_number', '=', rec.buyer.billing_info_doc_number)], limit=1)
+                if not partner:
+                    continue
+                # Encontrado pero no tiene el numero de Meli_ID guardado -> lo guardo
+                partner_rec = {
+                                'partner_id':partner.id,
+                                'meli_buyer_id':rec.buyer.buyer_id,
+                }
+                partner.write(partner_rec)
+
+                partner = self.env['res.partner'].search([('meli_buyer_id', '=', rec.buyer.buyer_id)], limit=1)
+                if not partner:
+                    continue
+
+            # # sale_order_id = self.env['sale.order'].search([('state', '=', 'draft'), ('partner_id', '=', partner.id)],limit=1)
+            #
+
+            vals = {
+                'partner_id': partner.id,
+                'origin': rec.order_id,
+                'type_id': 1,
+            }
+            sale_order_id = self.env['sale.order'].create(vals)
+            for line in rec.order_items:
+                vals_line = {
+                    'order_id': sale_order_id.id,
+                    'description': line.order_item_title,
+                    'product_id': line.posting_id.product_id.id,
+                    'price_unit': float(line.unit_price) / 1.21,
+                    'product_uom_qty': line.quantity,
+                }
+                line_id = self.env['sale.order.line'].create(vals_line)
+            rec.write({'sale_order_id': sale_order_id.id})
+
+    # @api.multi
+    def create_sale_order(self):
+        '''
+         Desde una ORDEN del tree order creo o Actualizo presupuesto
+        '''
+        for rec in self:
+            if not rec.buyer:
+                continue
+            # if rec.sale_order_id:
+            #    continue
+            partner = self.env['res.partner'].search([('meli_buyer_id', '=', rec.buyer.buyer_id)], limit=1)
+            if not partner:
+                # Parche: Entonces lo busco por el documento asosciado al cliente
+                partner = self.env['res.partner'].search([('main_id_number', '=', rec.buyer.billing_info_doc_number)],
+                                                         limit=1)
+                if not partner:
+                    continue
+                # Encontrado pero no tiene el numero de Meli_ID guardado -> lo guardo
+                partner_rec = {
+                     'partner_id': partner.id,
+                    'meli_buyer_id': rec.buyer.buyer_id,
+                }
+                partner.write(partner_rec)
+
+                partner = self.env['res.partner'].search([('meli_buyer_id', '=', rec.buyer.buyer_id)], limit=1)
+                if not partner:
+                    continue
+
+            sale_order_id = self.env['sale.order'].search([('state', '=', 'draft'), ('partner_id', '=', partner.id)],
+                                                          limit=1)
+            if not sale_order_id:
+                vals = {
+                    'partner_id': partner.id,
+                    'origin': rec.order_id,
+                    'type_id': 1,
+                }
+                sale_order_id = self.env['sale.order'].create(vals)
+            else:
+                if sale_order_id.origin:
+                    new_origin = sale_order_id.origin + ', ' + rec.order_id
+                else:
+                    new_origin = sale_order_id.origin or '' + ', ' + rec.order_id
+                sale_order_id.origin = new_origin
+
+            for line in rec.order_items:
+                vals_line = {
+                    'order_id': sale_order_id.id,
+                    'description': line.order_item_title,
+                    'product_id': line.posting_id.product_id.id,
+                    'price_unit': float(line.unit_price) / 1.21,
+                    'product_uom_qty': line.quantity,
+                }
+                line_id = self.env['sale.order.line'].search(
+                    [('order_id', '=', sale_order_id.id), ('product_id', '=', line.posting_id.product_id.id)])
+                if line_id:
+                    line_id.write(vals_line)
+                else:
+                    line_id = self.env['sale.order.line'].create(vals_line)
+            rec.sale_order_id = sale_order_id.id
+
         #create or update order
         if (order and order.id):
             _logger.info("Updating order: %s" % (order.id))

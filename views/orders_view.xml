@@ -120,6 +120,10 @@
               <form string="Orden de ML">
                 <header>
                   <field name="status" widget="statusbar"/>
+                        <button name="create_new_sale_order" type="object" string="Crear Presupuesto"
+                                class="btn-primary"/>
+                        <button name="create_sale_order" type="object" string="Actualizar Presupuesto"
+                                class="btn-primary"/>
                 </header>
                 <sheet>
                   <div class="oe_title">
