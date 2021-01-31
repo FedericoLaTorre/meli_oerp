@@ -420,7 +420,7 @@ class mercadolibre_shipment(models.Model):
 				'company_id': company.id,
 				'order_id': sorder.id,
 				'meli_order_item_id': 'ENVIO',
-				'price_unit': shipment.shipping_cost,
+				'price_unit': shipment.shipping_cost / 1.21,
 				'product_id': product_shipping_id.id,
 				'product_uom_qty': 1.0,
 				#'tax_id': None,
