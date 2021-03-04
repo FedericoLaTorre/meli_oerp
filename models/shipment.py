@@ -20,7 +20,6 @@
 ##############################################################################
 
 from odoo import fields, osv, models, api
-from odoo.exceptions import ValidationError
 import logging
 from .meli_oerp_config import *
 
@@ -424,7 +423,7 @@ class mercadolibre_shipment(models.Model):
 				#display_price = vals['carrier_price']
 				#_logger.info(vals)
 				set_delivery_line(sorder, delivery_price, delivery_message )
-# Envío sin IVA dividir shipping_cos x 1.21
+
 			saleorderline_item_fields = {
 				'company_id': company.id,
 				'order_id': sorder.id,
