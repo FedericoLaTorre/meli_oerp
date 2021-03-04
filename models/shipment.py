@@ -419,7 +419,8 @@ class mercadolibre_shipment(models.Model):
 				#delivery_message = vals.get('warning_message', False)
 				delivery_message = "Defined by MELI"
 				#delivery_price = vals['price']
-				delivery_price = shipment.shipping_cost
+				#descontamos el IVA del envío
+				delivery_price = shipment.shipping_cost / 1.21
 				#display_price = vals['carrier_price']
 				#_logger.info(vals)
 				set_delivery_line(sorder, delivery_price, delivery_message )
