@@ -1020,15 +1020,16 @@ class product_product(models.Model):
         meli = self.env['meli.util'].get_new_instance(company)
 
         try:
-            response = meli.get("/items/"+product.meli_id, {'access_token':meli.access_token})
-            #_logger.info(response)
+            response = meli.get("/items/"+product.meli_id, {'access_token':meli.access_token, 'include_attributes': 'all' })
+            _logger.info(response)
             rjson = response.json()
             #_logger.info(rjson)
         except IOError as e:
             _logger.info( "I/O error({0}): {1}".format(e.errno, e.strerror) )
             return {}
-        except:
+        except Exception as E:
             _logger.info( "Rare error" )
+            _logger.info(E, exc_info=True)
             return {}
 
         des = ''
@@ -1241,8 +1242,9 @@ class product_product(models.Model):
                     _logger.info(vid)
                     realmeliv = realmeliv+1
                     vid = rjson['variations'][vindex]['id']
-                    resvar = meli.get("/items/"+str(product.meli_id)+"/variations/"+str(vid), {'access_token':meli.access_token})
-                    vjson = resvar.json()
+                    #resvar = meli.get("/items/"+str(product.meli_id)+"/variations/"+str(vid), {'access_token':meli.access_token})
+                    #vjson = resvar.json()
+                    vjson = variation
                     if ( "error" in vjson ):
                         continue;
                     if ("attributes" in vjson):
@@ -2648,6 +2650,7 @@ class product_product(models.Model):
                             if (len(productjson["variations"][ix]["picture_ids"])>len(pictures_v)):
                                 pictures_v = productjson["variations"][ix]["picture_ids"]
                         same_price = productjson["variations"][ix]["price"]
+                        #_logger.info(productjson["variations"][ix])
                         if (self._is_product_combination(productjson["variations"][ix])):
                             #_logger.info("_is_product_combination! Post stock to variation")
                             #_logger.info(productjson["variations"][ix])
@@ -2667,11 +2670,14 @@ class product_product(models.Model):
                                 rjson = responsevar.json()
                                 if rjson:
                                     if "error" in rjson:
+                                        _logger.error(rjson)
                                         return rjson
 
                     if found_comb==False:
                         #add combination!!
+                        #_logger.info("add combination")
                         addvar = self._combination()
+                        #_logger.info(addvar)
                         if addvar:
                             if ('picture_ids' in addvar):
                                 if len(pictures_v)>=len(addvar["picture_ids"]):
@@ -2686,12 +2692,13 @@ class product_product(models.Model):
                                 rjson = responsevar.json()
                                 if rjson:
                                     if "error" in rjson:
+                                        _logger.error(rjson)
                                         return rjson
                             #_logger.info(responsevar.json())
                 #_logger.info("Available:"+str(product_tmpl.virtual_available))
                 best_available = 0
                 for vr in product_tmpl.product_variant_ids:
-                    sum = vr.virtual_available
+                    sum = vr.meli_available_quantity
                     if (sum<0):
                         sum = 0
                     best_available+= sum
@@ -2712,6 +2719,7 @@ class product_product(models.Model):
                                 product.meli_id_variation = pjson["variations"][0]["id"]
 
                 if (product.meli_id_variation):
+                    #_logger.info("Posting using product.meli_id_variation")
                     var = {
                         #"id": str( product.meli_id_variation ),
                         "available_quantity": product.meli_available_quantity,
@@ -2721,6 +2729,9 @@ class product_product(models.Model):
                     if (responsevar):
                         rjson = responsevar.json()
                         if rjson:
+                            _logger.info(rjson)
+                            if ('available_quantity' in rjson):
+                                _logger.info( "Posted ok:" + str(rjson['available_quantity']) )
                             if "error" in rjson:
                                 return rjson
                 else:

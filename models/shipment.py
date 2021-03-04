@@ -59,16 +59,19 @@ class mercadolibre_shipment_print(models.TransientModel):
 	_name = "mercadolibre.shipment.print"
 	_description = "Impresión de etiquetas"
 
-	def shipment_print(self, context=None):
+	def shipment_print(self, context=None, meli=None, config=None):
 		context = context or self.env.context
 		company = self.env.user.company_id
+		if not config:
+			config = company
 		shipment_ids = context['active_ids']
 		shipment_obj = self.env['mercadolibre.shipment']
 		warningobj = self.env['warning']
 
-		meli = self.env['meli.util'].get_new_instance(company)
-		if meli.need_login():
-			return meli.redirect_login()
+		if not meli:
+			meli = self.env['meli.util'].get_new_instance(company)
+			if meli.need_login():
+				return meli.redirect_login()
 
 		_logger.info("shipment_print")
 		_logger.info(shipment_ids)
@@ -123,19 +126,22 @@ class mercadolibre_shipment_print(models.TransientModel):
 		else:
 			return warningobj.info( title='Impresión de etiquetas: Estas etiquetas ya fueron todas impresas.', message=reporte )
 
-	def shipment_stock_picking_print(self, context=None):
+	def shipment_stock_picking_print(self, context=None, meli=None, config=None):
 		_logger.info("shipment_stock_picking_print")
 		context = context or self.env.context
 		company = self.env.user.company_id
+		if not config:
+			config = company
 		picking_ids = context['active_ids']
 		#product_obj = self.env['product.template']
 		picking_obj = self.env['stock.picking']
 		shipment_obj = self.env['mercadolibre.shipment']
 		warningobj = self.env['warning']
 
-		meli = self.env['meli.util'].get_new_instance(company)
-		if meli.need_login():
-			return meli.redirect_login()
+		if not meli:
+			meli = self.env['meli.util'].get_new_instance(company)
+			if meli.need_login():
+				return meli.redirect_login()
 
 		full_ids = ""
 		comma = ""
@@ -215,9 +221,11 @@ class mercadolibre_shipment_update(models.TransientModel):
 	_name = "mercadolibre.shipment.update"
 	_description = "Actualizar datos de envio"
 
-	def shipment_update(self, context=None):
+	def shipment_update(self, context=None, config=None, meli=None):
 		context = context or self.env.context
 		company = self.env.user.company_id
+		if not config:
+			config = company
 		shipment_ids = context['active_ids']
 		#product_obj = self.env['product.template']
 		shipment_obj = self.env['mercadolibre.shipment']
@@ -229,7 +237,7 @@ class mercadolibre_shipment_update(models.TransientModel):
 		for shipid in shipment_ids:
 			shipment = shipment_obj.browse(shipid)
 			if (shipment):
-				shipment.update()
+				shipment.update(meli=meli,config=config)
 
 
 mercadolibre_shipment_update()
@@ -244,7 +252,7 @@ class mercadolibre_shipment(models.Model):
 	site_id = fields.Char(string='Site id')
 	posting_id = fields.Many2one("mercadolibre.posting",string="Posting")
 	shipping_id = fields.Char(string='Envio Id',index=True)
-	order_id =  fields.Char(string='Order Id',index=True)
+	order_id = fields.Char(string='Order Id',index=True)
 	order = fields.Many2one("mercadolibre.orders",string="Order")
 	orders = fields.Many2many("mercadolibre.orders",string="Orders (carrito)")
 	sale_order = fields.Many2one('sale.order',string="Sale Order",help="Pedido de venta relacionado en Odoo")
@@ -259,7 +267,6 @@ class mercadolibre_shipment(models.Model):
 	base_cost = fields.Float(string='Base Cost')
 	shipping_cost = fields.Float(string='Shipping Cost')
 	shipping_list_cost = fields.Float(string='Shipping List Cost')
-	promoted_amount = fields.Float(string='Promoted Amount')
 
 	#state = fields.Selection(string="State",)
 	status = fields.Char(string="Status")
@@ -326,7 +333,7 @@ class mercadolibre_shipment(models.Model):
 	def create_shipment( self ):
 		return {}
 
-	def _update_sale_order_shipping_info( self, order ):
+	def _update_sale_order_shipping_info( self, order, meli=None, config=None ):
 
 		company = self.env.user.company_id
 		product_tpl = self.env['product.template']
@@ -417,12 +424,12 @@ class mercadolibre_shipment(models.Model):
 				#display_price = vals['carrier_price']
 				#_logger.info(vals)
 				set_delivery_line(sorder, delivery_price, delivery_message )
-
+# Envío sin IVA dividir shipping_cos x 1.21
 			saleorderline_item_fields = {
 				'company_id': company.id,
 				'order_id': sorder.id,
 				'meli_order_item_id': 'ENVIO',
-				'price_unit': shipment.shipping_cost / 1.21,
+				'price_unit': shipment.shipping_cost,
 				'product_id': product_shipping_id.id,
 				'product_uom_qty': 1.0,
 				#'tax_id': None,
@@ -448,9 +455,11 @@ class mercadolibre_shipment(models.Model):
 
 
 	#Return shipment object based on mercadolibre.orders "order"
-	def fetch( self, order ):
+	def fetch( self, order, meli=None, config=None ):
 
 		company = self.env.user.company_id
+		if not config:
+			config = company
 		sale_order_pack = None
 		saleorder_obj = self.env['sale.order']
 		saleorderline_obj = self.env['sale.order.line']
@@ -460,10 +469,10 @@ class mercadolibre_shipment(models.Model):
 
 		orders_obj = self.env['mercadolibre.orders']
 		shipment_obj = self.env['mercadolibre.shipment']
-
-		meli = self.env['meli.util'].get_new_instance(company)
-		if meli.need_login():
-			return meli.redirect_login()
+		if not meli:
+			meli = self.env['meli.util'].get_new_instance(company)
+			if meli.need_login():
+				return meli.redirect_login()
 
 		ship_id = False
 		shipment = None
@@ -484,16 +493,16 @@ class mercadolibre_shipment(models.Model):
 			else:
 				_logger.info("Saving shipment fields")
 				seller_id = None
-				if company.mercadolibre_seller_user:
-					seller_id = company.mercadolibre_seller_user.id
+				if config.mercadolibre_seller_user:
+					seller_id = config.mercadolibre_seller_user.id
 				ship_fields = {
 					"name": "MSO ["+str(ship_id)+"] "+str("")+str(ship_json["status"])+"/"+str(ship_json["substatus"])+str(""),
 					'company_id': company.id,
 					'seller_id': seller_id,
 					"order": order.id,
-					"shipping_id": ship_json["id"],
+					"shipping_id": str(ship_json["id"]),
 					"site_id": ship_json["site_id"],
-					"order_id": ship_json["order_id"],
+					"order_id": str(ship_json["order_id"]),
 					"mode": ship_json["mode"],
 					"shipping_mode": ship_json["shipping_option"]["name"],
 					"date_created": ml_datetime(ship_json["date_created"]),
@@ -587,6 +596,7 @@ class mercadolibre_shipment(models.Model):
 				#_logger.info(ships)
 				if (len(shipment)==0):
 					_logger.info("Importing shipment: " + str(ship_id))
+					_logger.info(str(ship_fields))
 					shipment = shipment_obj.create((ship_fields))
 					if (shipment):
 						_logger.info("Created shipment ok!")
@@ -633,8 +643,8 @@ class mercadolibre_shipment(models.Model):
 				#if its a pack order, create it, oif full_orders were fetched (we can force this now)
 				if (full_orders and ship_fields["pack_order"]):
 					plistid = None
-					if company.mercadolibre_pricelist:
-						plistid = company.mercadolibre_pricelist
+					if config.mercadolibre_pricelist:
+						plistid = config.mercadolibre_pricelist
 					else:
 						plistids = pricelist_obj.search([])[0]
 						if plistids:
@@ -652,7 +662,7 @@ class mercadolibre_shipment(models.Model):
 							#'meli_order_id': '%i' % (order_json["id"]),
 							'meli_order_id': packed_order_ids,
 							'meli_orders': [(6, 0, all_orders_ids)],
-							'meli_shipping_id': shipment.shipping_id,
+							'meli_shipping_id': str(shipment.shipping_id),
 							'meli_shipping': shipment,
 							'meli_shipment': shipment.id,
 							'meli_status': all_orders[0]["status"],
@@ -668,11 +678,13 @@ class mercadolibre_shipment(models.Model):
 						}
 						if ("pack_id" in all_orders[0] and all_orders[0]["pack_id"]):
 							meli_order_fields['name'] = "ML %s" % ( str(all_orders[0]["pack_id"]) )
-							#meli_order_fields['pack_id'] = all_orders[0]["pack_id"]                    
+							#meli_order_fields['pack_id'] = all_orders[0]["pack_id"]
 						sorder_pack = self.env["sale.order"].search( [ ('meli_order_id','=',meli_order_fields["meli_order_id"]) ] )
 
-						if (company.mercadolibre_seller_user):
-							meli_order_fields["user_id"] = company.mercadolibre_seller_user.id
+						if (config.mercadolibre_seller_user):
+							meli_order_fields["user_id"] = config.mercadolibre_seller_user.id
+						if (config.mercadolibre_seller_team):
+							meli_order_fields["team_id"] = config.mercadolibre_seller_team.id
 
 						if (len(sorder_pack)):
 							sorder_pack = sorder_pack[0]
@@ -723,28 +735,31 @@ class mercadolibre_shipment(models.Model):
 
 
 		if (shipment):
-			shipment._update_sale_order_shipping_info( order )
+			shipment._update_sale_order_shipping_info( order, meli=meli, config=config )
 
 		return shipment
 
-	def update( self ):
+	def update( self, meli=None, config=None ):
 
-		self.fetch( self.order )
+		self.fetch( self.order, meli=meli, config=config )
 
 		return {}
 
-	def shipment_query( self ):
+	def shipment_query( self, meli=None, config=None ):
 
 		company = self.env.user.company_id
+		if not config:
+			config = company
+		if not meli:
+			meli = self.env['meli.util'].get_new_instance(company)
+			if meli.need_login():
+				return meli.redirect_login()
 
 		orders_obj = self.env['mercadolibre.orders']
 		shipment_obj = self.env['mercadolibre.shipment']
 
-		meli = self.env['meli.util'].get_new_instance(company)
-		if meli.need_login():
-			return meli.redirect_login()
 
-		#orders_query = "/orders/search?seller="+company.mercadolibre_seller_id+"&sort=date_desc"
+		#orders_query = "/orders/search?seller="+config.mercadolibre_seller_id+"&sort=date_desc"
 
 		# https://api.mercadolibre.com/shipment_labels?shipment_ids=20178600648,20182100995&response_type=pdf&access_token=
 		# https://api.mercadolibre.com/shipments/27693158904?access_token=APP_USR-3069131366650174-120509-8746c1a831468e99f84105cd631ff206-246057399
