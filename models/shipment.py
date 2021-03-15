@@ -411,7 +411,6 @@ class mercadolibre_shipment(models.Model):
 				#delivery_message = vals.get('warning_message', False)
 				delivery_message = "Defined by MELI"
 				#delivery_price = vals['price']
-				delivery_price = shipment.shipping_cost
 				#descontamos el IVA del envío
 				delivery_price = shipment.shipping_cost / 1.21
 				#display_price = vals['carrier_price']
@@ -422,7 +421,7 @@ class mercadolibre_shipment(models.Model):
 				'company_id': company.id,
 				'order_id': sorder.id,
 				'meli_order_item_id': 'ENVIO',
-				'price_unit': shipment.shipping_cost / 1.21,
+				'price_unit': shipment.shipping_cost,
 				'product_id': product_shipping_id.id,
 				'product_uom_qty': 1.0,
 				#'tax_id': None,
