@@ -91,7 +91,6 @@ class MercadolibreNotification(models.Model):
         vals = {
             "notification_id": values["_id"],
             "application_id": values["application_id"],
-            "processing_started": values["processing_started"] or "",
             "user_id": values["user_id"],
             "topic": values["topic"],
             "resource": values["resource"],
@@ -102,6 +101,8 @@ class MercadolibreNotification(models.Model):
             'company_id': company.id,
             'seller_id': seller_id
         }
+        if "processing_started" in values:
+            vals["processing_started"] = values["processing_started"]
         return vals
 
     def fetch_lasts(self, data=False, company=None):
@@ -120,7 +121,7 @@ class MercadolibreNotification(models.Model):
 
         try:
             if data:
-                if company.mercadolibre_client_id != data["application_id"]:
+                if str(company.mercadolibre_client_id) != str(data["application_id"]):
                     return {"error": "company.mercadolibre_client_id and application_id does not match!", "status": "520" }
 
                 if (not "_id" in data):
@@ -318,7 +319,7 @@ class MercadolibreNotification(models.Model):
                 noti.process_notification()
 
     def start_internal_notification(self, internals):
-
+        noti = None
         date_time = ml_datetime( str( datetime.now() ) )
         base_str = str(internals["application_id"]) + str(internals["user_id"]) + str(date_time)
 
@@ -334,7 +335,8 @@ class MercadolibreNotification(models.Model):
         internals["state"] = "RECEIVED"
 
         vals = self._prepare_values(values=internals)
-        noti = self.create(vals)
+        if vals:
+            noti = self.create(vals)
 
         return  noti
 
