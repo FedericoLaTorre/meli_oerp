@@ -1,9 +1,10 @@
 meli_oerp
 =========
 
-Módulo para sincronizar MercadoLibre con Odoo 13.
+Módulo para sincronizar MercadoLibre con Odoo.
 
-Para que funcione correctamente se debe tener instalado Odoo 13 Community o Enterprise, en modo HTTPS (443).
+Para que funcione correctamente se debe tener instalado Odoo Community o Enterprise, en modo HTTPS (443).
+Y no modificar el nombre de la carpeta del módulo: "meli_oerp"  ( Meli Open ERP, Open ERP era como se llamaba antes el Odoo )
 
 Ver http://applications.mercadolibre.com.ar para obtener el client_id (app_id), y el secret key, para obtener el owner_id (vendor id), simplemente se hace un curl -X GET https://api.mercadolibre.com/applications/{app_id} , que devuelve la info de la app y del owner.
 
@@ -17,6 +18,8 @@ Para Chile: https://api.mercadolibre.com/sites/MLC/search?nickname=ESCRIBE_AQUI_
 Para México: https://api.mercadolibre.com/sites/MLM/search?nickname=ESCRIBE_AQUI_TU_NICK_NAME
 
 Para Costa Rica: https://api.mercadolibre.com/sites/MCR/search?nickname=ESCRIBE_AQUI_TU_NICK_NAME
+
+Para Uruguay: https://api.mercadolibre.com/sites/MLU/search?nickname=ESCRIBE_AQUI_TU_NICK_NAME
 
 [...]
 

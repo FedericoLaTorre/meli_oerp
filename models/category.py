@@ -49,7 +49,7 @@ class mercadolibre_category_import(models.TransientModel):
         company = self.env.user.company_id
         #mlcat_ids = context['active_ids']
         #mlcat_obj = self.env['mercadolibre.category']
-        _logger.info("_get_default_meli_category_id")
+        _logger.info("_get_default_meli_recursive_import")
         _logger.info(context)
 
     meli_category_id = fields.Char(string="MercadoLibre Category ID",help="MercadoLibre Category ID (ML????????)",default=_get_default_meli_category_id)
@@ -64,24 +64,14 @@ class mercadolibre_category_import(models.TransientModel):
 
         warningobj = self.env['warning']
 
-        REDIRECT_URI = company.mercadolibre_redirect_uri
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
-
-        if ACCESS_TOKEN=='' or ACCESS_TOKEN==False:
-            meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET)
-            url_login_meli = meli.auth_url(redirect_URI=REDIRECT_URI)
-            return {
-                "type": "ir.actions.act_url",
-                "url": url_login_meli,
-                "target": "new",
-            }
+        meli = self.env['meli.util'].get_new_instance(company)
+        if meli.need_login():
+            return meli.redirect_login()
 
         _logger.info(context)
+        if ( self.meli_category_id ):
+            catid = self.env["mercadolibre.category"].import_all_categories( self.meli_category_id, self.meli_recursive_import )
+
 
 mercadolibre_category_import()
 
@@ -128,6 +118,77 @@ class mercadolibre_category(models.Model):
     _name = "mercadolibre.category"
     _description = "Categories of MercadoLibre"
 
+    def meli_get_category( self, category_id, meli=None, create_missing_website=True ):
+
+        company = self.env.user.company_id
+        www_cats = False
+        if 'product.public.category' in self.env:
+            www_cats = self.env['product.public.category']
+        if not meli:
+            meli = self.env['meli.util'].get_new_instance(company)
+        if meli.need_login():
+            return meli.redirect_login()
+
+        mlcatid = False
+        www_cat_id = False
+
+        ml_cat = self.env['mercadolibre.category'].search([('meli_category_id','=',category_id)],limit=1)
+        ml_cat_id = ml_cat.id
+        if (ml_cat_id):
+            #_logger.info( "category exists!" + str(ml_cat_id) )
+            mlcatid = ml_cat_id
+            if www_cats:
+                www_cat_id = ml_cat.public_category_id
+        else:
+            #_logger.info( "Creating category: " + str(category_id) )
+            #https://api.mercadolibre.com/categories/MLA1743
+            response_cat = meli.get("/categories/"+str(category_id), {'access_token':meli.access_token})
+            rjson_cat = response_cat.json()
+            #_logger.info( "category:" + str(rjson_cat) )
+            fullname = ""
+            if ("path_from_root" in rjson_cat):
+                path_from_root = rjson_cat["path_from_root"]
+                p_id = False
+                #pdb.set_trace()
+                for path in path_from_root:
+                    fullname = fullname + "/" + path["name"]
+
+                    if (create_missing_website and ('product.public.category' in self.env) ):
+                        if www_cats!=False:
+                            www_cat_id = www_cats.search([('name','=',path["name"])]).id
+                            if www_cat_id==False:
+                                www_cat_fields = {
+                                  'name': path["name"],
+                                  #'parent_id': p_id,
+                                  #'sequence': 1
+                                }
+                                if p_id:
+                                    www_cat_fields['parent_id'] = p_id
+                                www_cat_id = www_cats.create((www_cat_fields)).id
+                                if www_cat_id:
+                                    _logger.info("Website Category created:"+fullname)
+
+                            p_id = www_cat_id
+
+            #fullname = fullname + "/" + rjson_cat['name']
+            #_logger.info( "category fullname:" + fullname )
+            cat_fields = {
+                'name': fullname,
+                'meli_category_id': ''+str(category_id),
+                'public_category_id': 0,
+            }
+
+            if www_cat_id:
+                p_cat_id = www_cats.search([('id','=',www_cat_id)])
+                if (len(p_cat_id)):
+                    cat_fields['public_category_id'] = www_cat_id
+                #cat_fields['public_category'] = p_cat_id
+
+            ml_cat_id = self.env['mercadolibre.category'].create((cat_fields)).id
+            if (ml_cat_id):
+                mlcatid = ml_cat_id
+
+        return mlcatid, www_cat_id
 
     def _get_category_url( self ):
         company = self.env.user.company_id
@@ -137,12 +198,7 @@ class mercadolibre_category(models.Model):
         att_obj = self.env['mercadolibre.category.attribute']
         prod_att_obj = self.env['product.attribute']
 
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
+        meli = self.env['meli.util'].get_new_instance(company)
 
         for category in self:
             if (category and category.meli_category_id):
@@ -173,12 +229,8 @@ class mercadolibre_category(models.Model):
         att_obj = self.env['mercadolibre.category.attribute']
         prod_att_obj = self.env['product.attribute']
 
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
+        meli = self.env['meli.util'].get_new_instance(company)
 
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
         for category in self:
             if (category.meli_category_id
                 and category.is_branch==False
@@ -194,8 +246,10 @@ class mercadolibre_category(models.Model):
                         _logger.info(att)
                         _logger.info(att['id'])
                         attrs = att_obj.search( [ ('att_id','=',str(att['id'])),('name','=',str(att['name'])) ] )
+                        #attrs = att_obj.search( [ ('cat_id','=',False),('att_id','=',str(att['id'])),('name','=',str(att['name'])) ] )
                         attrs_field = {
                             'name': att['name'],
+                            #'cat_id': str(category.meli_category_id),
                             'value_type': att['value_type'],
                             'hidden': ('hidden' in att['tags']),
                             'multivalued': ( 'multivalued' in att['tags']),
@@ -290,12 +344,7 @@ class mercadolibre_category(models.Model):
         warningobj = self.env['warning']
         category_obj = self.env['mercadolibre.category']
 
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
-
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
+        meli = self.env['meli.util'].get_new_instance(company)
         ml_cat_id = None
         if (category_id):
             is_branch = False
@@ -343,27 +392,21 @@ class mercadolibre_category(models.Model):
         return ml_cat_id
 
 
-    def import_all_categories(self, category_root ):
+    def import_all_categories(self, category_root, recursive_import=False ):
         company = self.env.user.company_id
 
         warningobj = self.env['warning']
         category_obj = self.env['mercadolibre.category']
 
-        CLIENT_ID = company.mercadolibre_client_id
-        CLIENT_SECRET = company.mercadolibre_secret_key
-        ACCESS_TOKEN = company.mercadolibre_access_token
-        REFRESH_TOKEN = company.mercadolibre_refresh_token
+        meli = self.env['meli.util'].get_new_instance(company)
 
-        meli = Meli(client_id=CLIENT_ID,client_secret=CLIENT_SECRET, access_token=ACCESS_TOKEN, refresh_token=REFRESH_TOKEN)
-
-        RECURSIVE_IMPORT = company.mercadolibre_recursive_import
+        RECURSIVE_IMPORT = recursive_import or company.mercadolibre_recursive_import
 
         if (category_root):
             response = meli.get("/categories/"+str(category_root), {'access_token':meli.access_token} )
 
-            _logger.info( "response.content:", response.content )
-
             rjson = response.json()
+            _logger.info( "response:", rjson )
             if ("name" in rjson):
                 # en el html deberia ir el link  para chequear on line esa categoría corresponde a sus productos.
                 warningobj.info( title='MELI WARNING', message="Preparando importación de todas las categorías en "+str(category_root), message_html=response )
@@ -395,5 +438,8 @@ class mercadolibre_category(models.Model):
     meli_setting_minimum_qty = fields.Float(string="Minimum qty")
     meli_setting_maximum_qty = fields.Float(string="Maximum qty")
 
+    _sql_constraints = [
+    	('unique_meli_category_id','unique(meli_category_id)','Meli Category id already exists!'),
+    ]
 
 mercadolibre_category()

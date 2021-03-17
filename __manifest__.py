@@ -7,12 +7,13 @@
 ##############################################################################
 
 {
-    'name': 'MercadoLibre Publisher',
-    'version': '13.0.20.40',
+    'name': 'MercadoLibre Publisher / Mercado Libre Odoo Connector',
+    'summary': 'MercadoLibre Publisher / Mercado Libre Odoo Connector',
+    'version': '13.0.21.30',
     'author': 'Moldeo Interactive',
     'website': 'https://www.moldeointeractive.com',
     "category": "Sales",
-    "depends": ['base', 'product','sale_management','website_sale','stock','mrp'],
+    "depends": ['base', 'product','sale_management','website_sale','stock','delivery'],
     'data': [
         'security/meli_oerp_security.xml',
         'security/ir.model.access.csv',
@@ -33,10 +34,21 @@
 	'views/shipment_view.xml',
 	'views/notifications_view.xml'
     ],
-    "external_dependencies": {"python": ['pdf2image']},
+    'price': '350.00',
+    'currency': 'USD',
+    "external_dependencies": {"python": ['pdf2image','meli']},
+    'images': [ 'static/description/main_screenshot.png',
+                'static/description/meli_oerp_screenshot.png',
+                'static/description/meli_oerp_configuration_1.png',
+                'static/description/meli_oerp_configuration_2.png',
+                'static/description/meli_oerp_configuration_3.png',
+                'static/description/meli_oerp_configuration_4.png',
+                'static/description/moldeo_interactive_logo.png',
+                'static/description/odoo_to_meli.png'],
     'demo_xml': [],
     'active': False,
     'installable': True,
     'application': True,
+    'license': 'GPL-3'
 
 }
