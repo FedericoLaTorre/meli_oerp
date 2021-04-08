@@ -58,12 +58,12 @@ class MercadolibreNotification(models.Model):
 
     notification_id = fields.Char(string='Notification Id',required=True,index=True)
     application_id = fields.Char(string='Application Id', index=True)
-    user_id = fields.Char('User Id')
-    topic = fields.Char('Topic', index=True)
-    sent = fields.Datetime('Sent')
-    received = fields.Datetime('Received', index=True)
-    resource = fields.Char("Resource", index=True)
-    attempts = fields.Integer('Attempts')
+    user_id = fields.Char(string='User Id')
+    topic = fields.Char(string='Topic', index=True)
+    sent = fields.Datetime(string='Sent')
+    received = fields.Datetime(string='Received', index=True)
+    resource = fields.Char(string="Resource", index=True)
+    attempts = fields.Integer(string='Attempts')
 
     state = fields.Selection([
 		("RECEIVED","Notification received."),
@@ -234,8 +234,6 @@ class MercadolibreNotification(models.Model):
             finally:
                 noti.processing_ended = ml_datetime(str(datetime.now()))
 
-
-
     def _process_notification_order(self):
         #_logger.info("_process_notification_order")
 
@@ -255,10 +253,10 @@ class MercadolibreNotification(models.Model):
                 res = meli.get(""+str(noti.resource), {'access_token':meli.access_token} )
                 ojson =  res.json()
                 _logger.info(ojson)
-                if ('error' in ojson):
+                if (ojson and 'error' in ojson):
                     noti.state = 'FAILED'
                     noti.processing_errors = str(ojson['error'])
-                if ("id" in ojson):
+                if (ojson and "id" in ojson):
 
                     morder = self.env["mercadolibre.orders"].search( [('order_id','=',ojson["id"])], limit=1 )
 
@@ -269,9 +267,9 @@ class MercadolibreNotification(models.Model):
                         pdata["id"] =  morder.id
 
                     rsjson = morder.orders_update_order_json( pdata )
-                    _logger.info(str(rsjson))
+                    _logger.info("rsjson:"+str(rsjson))
 
-                    if ('error' in rsjson):
+                    if (rsjson and 'error' in rsjson):
                         noti.state = 'FAILED'
                         noti.processing_errors = str(rsjson['error'])
                     else:
@@ -281,6 +279,7 @@ class MercadolibreNotification(models.Model):
             except Exception as E:
                 noti.state = 'FAILED'
                 noti.processing_errors = str(E)
+                _logger.error("_process_notification_order:"+str(E))
             finally:
                 noti.processing_ended = ml_datetime(str(datetime.now()))
 
@@ -302,7 +301,6 @@ class MercadolibreNotification(models.Model):
 
                 if (noti.topic in ["order","created_orders","orders_v2"]):
                     noti._process_notification_order()
-
 
     def process_notifications(self, limit=None):
         #process all
