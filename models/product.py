@@ -744,7 +744,9 @@ class product_product(models.Model):
         #_logger.info(ml_bytes)
 
         #_logger.info("Cleaning product template images with meli id but not in ML")
-        ml_images = self.env["product.image"].search([('meli_force_pub','=',False),
+        ml_images = None
+        if "product.image" in self.env:
+            ml_images = self.env["product.image"].search([('meli_force_pub','=',False),
                                                         ('meli_imagen_id','!=',False),
                                                         ('product_tmpl_id','=',product_template.id)])
         #_logger.info(ml_images)
@@ -755,7 +757,8 @@ class product_product(models.Model):
 
         try:
             #_logger.info("Cleaning product variant images with meli id not in ML")
-            ml_images = self.env["product.image"].search([  ('meli_force_pub','=',False),
+            if "product.image" in self.env:
+                ml_images = self.env["product.image"].search([  ('meli_force_pub','=',False),
                                                             ('meli_imagen_id','!=',False),
                                                             ('product_variant_id','=',product.id)])
             #_logger.info(ml_images)
@@ -2475,7 +2478,7 @@ class product_product(models.Model):
                 product.meli_id = variant_principal.meli_id
 
     #Add/Update SELLER_SKU attribute, only if present in Odoo, also can update GTIN (barcode)
-    def _update_sku_attribute( self, attributes=[], set_sku=True, set_barcode=False ):
+    def _update_sku_attribute( self, attributes=[], set_sku=True, set_barcode=True ):
 
         variant = self
 
@@ -2753,7 +2756,7 @@ class product_product(models.Model):
                 elif (len(at_line_id.value_ids)>1):
                     variations_candidates = True
 
-            _logger.info(attributes)
+            _logger.info("attributes:"+str(attributes))
             product.meli_attributes = str(attributes)
 
         if product.meli_brand==False or len(product.meli_brand)==0:
@@ -2769,13 +2772,13 @@ class product_product(models.Model):
         if product.meli_brand and len(product.meli_brand) > 0 and not "BRAND" in attributes_ids:
             attribute = { "id": "BRAND", "value_name": product.meli_brand }
             attributes.append(attribute)
-            _logger.info(attributes)
+            _logger.info("attributes:"+str(attributes))
             product.meli_attributes = str(attributes)
 
         if product.meli_model and len(product.meli_model) > 0 and not "MODEL" in attributes_ids:
             attribute = { "id": "MODEL", "value_name": product.meli_model }
             attributes.append(attribute)
-            _logger.info(attributes)
+            _logger.info("attributes:"+str(attributes))
             product.meli_attributes = str(attributes)
 
         #_product_post_set_category
@@ -2909,6 +2912,7 @@ class product_product(models.Model):
 
         if len(attributes):
             body["attributes"] =  attributes
+            _logger.info("body attributes:"+str(attributes))
 
         #publicando multiples imagenes
         multi_images_ids = {}
