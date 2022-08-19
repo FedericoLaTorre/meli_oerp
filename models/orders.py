@@ -739,10 +739,19 @@ class mercadolibre_orders(models.Model):
             return None
         meli_id = meli_item['id']
         meli_id_variation = ("variation_id" in meli_item and meli_item['variation_id'])
-        if (meli_id_variation):
-            product_related = product_obj.search([ ('meli_id','=',meli_id), ('meli_id_variation','=',meli_id_variation) ])
-        else:
-            product_related = product_obj.search([('meli_id','=', meli_id)])
+        meli_seller_sku = "seller_sku" in meli_item and meli_item["seller_sku"]
+        if meli_seller_sku:
+            product_related = product_obj.search([ ('default_code','=ilike',meli_seller_sku)])
+            #search by barcode
+            if ((not product_related) or len(product_related)>1):
+                product_related = product_obj.search([ ('barcode','=ilike',meli_seller_sku)])
+
+        if ((not product_related) or len(product_related)>1):
+            if (meli_id_variation):
+                product_related = product_obj.search([ ('meli_id','=',meli_id), ('meli_id_variation','=',meli_id_variation) ])
+            else:
+                product_related = product_obj.search([('meli_id','=', meli_id)])
+
         return product_related
 
     def update_partner_billing_info( self, partner_id, meli_buyer_fields, Receiver):
@@ -2041,12 +2050,55 @@ class mercadolibre_orders(models.Model):
     date_created = fields.Datetime('Creation date')
     date_closed = fields.Datetime('Closing date')
 
+
+    def search_order_order_product(self, operator, value):
+        _logger.info("search_order_item_product_id")
+        _logger.info(operator)
+        _logger.info(value)
+        if operator == '=':
+            #name = self.env.context.get('name', False)
+            #if name is not False:
+            id_list = []
+            _logger.info(self.env.context)
+            #name = self.env.context.get('name', False)
+            order_items = []
+            if value == True:
+                order_items = self.env['mercadolibre.order_items'].search([('product_id','!=',False)], limit=10000)
+            else:
+                order_items = self.env['mercadolibre.order_items'].search([('product_id','=',False)], limit=10000)
+            
+            #if (value):
+            for item in order_items:
+                #if (value in p.meli_publications):
+                id_list.append(item.order_id.id)
+
+            return [('id', 'in', id_list)]
+        else:
+            _logger.error(
+                'The field name is not searchable'
+                ' with the operator: {}',format(operator)
+            )
+            
     order_items = fields.One2many('mercadolibre.order_items','order_id',string='Order Items' )
 
     def _order_product( self ):
         for ord in self:
-            ord.order_product = ord.order_items and ord.order_items[0].product_id
-    order_product = fields.Many2one('product.product',string='Order Items',compute=_order_product )
+            ord.order_product = False
+            
+            if ord.order_items and ord.order_items[0]:
+                ord.order_product = ord.order_items[0].product_id
+                
+    order_product = fields.Many2one('product.product',string='Order Product',compute=_order_product, search=search_order_order_product )
+    
+    def _order_product_sku( self ):
+        for ord in self:
+            ord.order_product_sku = ""
+            
+            if ord.order_items and ord.order_items[0]:
+                ord.order_product_sku = ord.order_items[0].seller_sku
+    
+    order_product_sku = fields.Char(string='Order Product Sku', compute=_order_product_sku )
+
 
     payments = fields.One2many('mercadolibre.payments','order_id',string='Payments' )
 
