@@ -822,14 +822,14 @@ class mercadolibre_shipment(models.Model):
                                 image.save(image_filename, "JPEG")
                                 if (images.index(image)==0):
                                     imgdata = urlopen("file://"+image_filename).read()
-                                    shipment.pdfimage_file = base64.encodestring(imgdata)
+                                    shipment.pdfimage_file = base64.encodebytes(imgdata)
                                     shipment.pdfimage_filename = "Shipment_"+shipment.shipping_id+".jpg"
                             #if (len(images)):
                             #    _logger.info(images)
                                 #for image in images:
                                 #base64.b64decode( pimage.image )
                             #    image = images[1]
-                            #    ships.pdfimage_file = base64.encodestring(image.tobytes())
+                            #    ships.pdfimage_file = base64.encodebytes(image.tobytes())
                             #    ships.pdfimage_filename = "Shipment_"+ships.shipping_id+".jpg"
                 except Exception as e:
                     _logger.info("Error converting pdf to jpg: try installing pdf2image and poppler-utils, like this:")
@@ -1067,7 +1067,7 @@ class mercadolibre_shipment(models.Model):
                     data = urlopen(shipment.pdf_link).read()
                     _logger.info(data)
                     shipment.pdf_filename = "Shipment_"+shipment.shipping_id+".pdf"
-                    shipment.pdf_file = base64.encodestring(data)
+                    shipment.pdf_file = base64.encodebytes(data)
                     images = convert_from_bytes(data, dpi=300,fmt='jpg')
                     if (1==1 and len(images)>1):
                         for image in images:
@@ -1075,7 +1075,7 @@ class mercadolibre_shipment(models.Model):
                             image.save(image_filename, "JPEG")
                             if (images.index(image)==0):
                                 imgdata = urlopen("file://"+image_filename).read()
-                                shipment.pdfimage_file = base64.encodestring(imgdata)
+                                shipment.pdfimage_file = base64.encodebytes(imgdata)
                                 shipment.pdfimage_filename = "Shipment_"+shipment.shipping_id+".jpg"
 
                 except Exception as e:

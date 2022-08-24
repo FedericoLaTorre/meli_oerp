@@ -788,7 +788,7 @@ class product_product(models.Model):
                 ix_start = 1
                 thumbnail_url = pictures[0]['url']
                 image = urlopen(thumbnail_url).read()
-                image_base64 = base64.encodestring(image)
+                image_base64 = base64.encodebytes(image)
                 set_image_full(product, image_base64)
 
             if (len(pictures)):
@@ -814,7 +814,7 @@ class product_product(models.Model):
                             thumbnail_url = imgjson['variations'][0]['secure_url']
 
                     image = urlopen(thumbnail_url).read()
-                    image_base64 = base64.encodestring(image)
+                    image_base64 = base64.encodebytes(image)
                     meli_imagen_bytes = len(image)
                     pimage = False
                     pimg_fields = {
@@ -988,7 +988,7 @@ class product_product(models.Model):
             if thumbnail_url:
                 _logger.info( "Setting principal IMAGE for product: " + str(product.display_name) + " thumbnail_url: " + str(thumbnail_url) )
                 image = urlopen(thumbnail_url).read()
-                image_base64 = base64.encodestring(image)
+                image_base64 = base64.encodebytes(image)
                 set_image_full(product, image_base64)
 
         #ADDITIONAL MEDIAS
@@ -1011,7 +1011,7 @@ class product_product(models.Model):
                         thumbnail_url = imgjson['variations'][0]['secure_url']
 
                 image = urlopen(thumbnail_url).read()
-                image_base64 = base64.encodestring(image)
+                image_base64 = base64.encodebytes(image)
                 meli_imagen_bytes = len(image)
 
                 #pimage = False
